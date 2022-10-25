@@ -7,9 +7,10 @@ pipeline {
     stages {
         stage('Hello') {
             steps {
-                echo 'Hello World'
-                sh "ls -la" 
-                called(this)
+             script {
+               def x = readMavenPom file:pom.xml 
+               echo "$x"
+             }
             }
         }
     }
