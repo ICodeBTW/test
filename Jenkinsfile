@@ -9,7 +9,7 @@ pipeline {
             steps {
              script {
                def x = readMavenPom file:"pom.xml" 
-               echo "$x.getScm()"
+               echo "$x.scm.connection"
              }
             }
         }
