@@ -8,7 +8,7 @@ pipeline {
         stage('Hello') {
             steps {
              script {
-               def x = readMavenPom file:"pomx.xml" 
+               def x = readMavenPom file:"pom.xml" 
                echo "$x"
              }
             }
