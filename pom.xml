@@ -115,6 +115,12 @@
             </plugin>
         </plugins>
     </reporting>
+         
+         <scm>
+                  <connection>
+                  scm:git:git@github.com:ICodeBTW/test.git
+                  </connection>
+         </scm>
 
 
 </project>
