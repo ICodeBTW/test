@@ -15,9 +15,21 @@ import com.atlassian.jira.security.JiraAuthenticationContext
 CustomFieldManager customFieldManager = ComponentAccessor.getCustomFieldManager()
 CustomField customField = customFieldManager.getCustomFieldObject("customfield_12345")
 
-// Get the field layout manager and all field layouts
+// Get the field layout manager and all schemes
 FieldLayoutManager fieldLayoutManager = ComponentAccessor.getFieldLayoutManager()
-List<FieldLayout> allFieldLayouts = fieldLayoutManager.getFieldLayouts()
+List<FieldLayout> allFieldLayouts = []
+
+// Iterate through all schemes
+SchemeManagerFactory schemeManagerFactory = ComponentAccessor.getOSGiComponentInstanceOfType(SchemeManagerFactory.class)
+for (String schemeType : schemeManagerFactory.getSchemeTypes()) {
+    def schemeManager = schemeManagerFactory.getSchemeManager(schemeType)
+    for (Object scheme : schemeManager.getSchemes()) {
+        
+        // Get the field layouts for the scheme
+        def fieldLayouts = fieldLayoutManager.getFieldLayouts((scheme))
+        allFieldLayouts.addAll(fieldLayouts)
+    }
+}
 
 // Initialize an empty list to hold screen IDs that include the custom field
 List<Long> screensWithField = []
@@ -32,7 +44,6 @@ for (FieldLayout fieldLayout : allFieldLayouts) {
         Long schemeId = fieldLayout.getSchemeId()
         
         // Get the scheme manager factory and the project manager
-        SchemeManagerFactory schemeManagerFactory = ComponentAccessor.getOSGiComponentInstanceOfType(SchemeManagerFactory.class)
         ProjectManager projectManager = ComponentAccessor.getProjectManager()
         
         // Get the scheme manager for the field layout's scheme type
