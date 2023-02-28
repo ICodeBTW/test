@@ -1,6 +1,7 @@
 import com.atlassian.jira.component.ComponentAccessor
 import com.atlassian.jira.issue.fields.CustomField
 import com.atlassian.jira.issue.fields.screen.FieldScreen
+import com.atlassian.jira.issue.fields.screen.FieldScreenManager
 
 def projectKey = "TEST" // Change this to your project key
 
