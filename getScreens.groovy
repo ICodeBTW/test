@@ -1,50 +1,29 @@
 import com.atlassian.jira.component.ComponentAccessor
 import com.atlassian.jira.issue.fields.CustomField
-import com.atlassian.jira.issue.fields.layout.field.FieldLayout
 import com.atlassian.jira.issue.fields.screen.FieldScreen
-import com.atlassian.jira.issue.fields.screen.FieldScreenTab
-import com.atlassian.jira.project.Project
-import com.atlassian.jira.project.ProjectManager
 
-// Get the custom field by ID
-CustomField customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObject("customfield_12345")
+def projectKey = "TEST" // Change this to your project key
 
-// Initialize an empty list to hold screen IDs that include the custom field
-List<Long> screensWithField = []
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def fieldScreenManager = ComponentAccessor.getFieldScreenManager()
 
-// Get the project manager
-ProjectManager projectManager = ComponentAccessor.getProjectManager()
+// Get all custom fields for all issue types of the project
+def customFieldsForProject = customFieldManager.getCustomFieldObjects().findAll { CustomField cf ->
+    cf.getAssociatedProjectIds().contains(projectKey as Long)
+}
 
-// Iterate through all projects
-for (Project project : projectManager.getProjects()) {
-    
-    // Get the field layout for the custom field in the project
-    FieldLayout fieldLayout = ComponentAccessor.getFieldLayoutManager().getFieldLayout(project, customField)
-    
-    // Check if the field layout contains the custom field
-    if (fieldLayout.contains(customField)) {
-        
-        // Get the field screen for the field layout
-        FieldScreen fieldScreen = fieldLayout.getFieldScreen()
-        
-        // Iterate through all tabs of the field screen
-        for (FieldScreenTab tab : fieldScreen.getTabs()) {
-            
-            // Check if the tab contains the custom field
-            if (tab.getFieldScreenLayoutItem(customField.getId()) != null) {
-                
-                // Add the screen ID to the list
-                screensWithField.add(fieldScreen.getId())
-                break
-            }
-        }
+// Get all fields on every screen (whether the screens are applied to the workflow transition or not)
+def fieldsOnScreens = fieldScreenManager.getFieldScreens().collectEntries { FieldScreen fs ->
+    [fs.name, fs.tabs.collectMany { tab -> tab.fieldLayoutItems.collect { it.orderableField.id } }]
+}
+
+// Compare custom fields with fields on screens and return only custom fields
+def result = [:]
+fieldsOnScreens.each { screenName, fieldIds ->
+    def commonFields = fieldIds.intersect(customFieldsForProject*.id)
+    if (commonFields) {
+        result[screenName] = commonFields.collect { customFieldManager.getCustomFieldObject(it).name }
     }
 }
 
-// Remove duplicate screen IDs
-screensWithField = screensWithField.unique()
-
-// Print the screen IDs
-for (Long screenId : screensWithField) {
-    log.debug("Screen ID: {}", screenId)
-}
+return result
