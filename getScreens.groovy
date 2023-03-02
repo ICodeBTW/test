@@ -1,55 +1,85 @@
-import com.atlassian.jira.component.ComponentAccessor
-import com.atlassian.jira.issue.fields.CustomField
-import com.atlassian.jira.issue.fields.layout.field.FieldLayout
-import com.atlassian.jira.issue.fields.layout.field.FieldLayoutItem
-import com.atlassian.jira.issue.fields.screen.FieldScreen
-import com.atlassian.jira.issue.fields.screen.FieldScreenScheme
-import com.atlassian.jira.issue.fields.screen.FieldScreenSchemeItem
+// Set the dimensions and margins of the diagram
+var margin = {top: 20, right: 90, bottom: 30, left: 90},
+    width = 960 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
 
-// Get the FieldLayoutManager and FieldScreenManager
-def fieldLayoutManager = ComponentAccessor.getFieldLayoutManager()
-def fieldScreenManager = ComponentAccessor.getFieldScreenManager()
+// Append an SVG element to the body of the page
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.right + margin.left)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + (margin.left + width / 2) + "," + (margin.top + height / 2) + ")");
 
-// Get the custom field by ID
-def customFieldId = "CUSTOM_FIELD_ID"
-def customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObject(customFieldId)
-
-// Get the screens by IDs
-def screenIds = [123, 456, 789] // Replace with your screen IDs
-def fieldScreens = screenIds.collect { fieldScreenManager.getFieldScreen(it as Long) }
-
-// Loop through the screens and add the custom field to them
-fieldScreens.each { screen ->
-    def fieldScreenScheme = fieldScreenManager.getFieldScreenScheme(screen)
-
-    // Find the field screen scheme item that corresponds to the screen
-    def schemeItem = fieldScreenScheme.getFieldScreenSchemeItems().find { it.getFieldScreen().id == screen.id }
-
-    // Find the field layout that corresponds to the issue type and field screen scheme item
-    def fieldLayout = fieldLayoutManager.getFieldLayout(schemeItem.getIssueTypeId(), schemeItem.getFieldScreenSchemeId())
-
-    // Add the custom field to the field layout
-    def fieldLayoutItem = fieldLayoutManager.getFieldLayoutItem(fieldLayout.getId(customField))
-    if (!fieldLayout.getFieldLayoutItems().contains(fieldLayoutItem)) {
-        fieldLayout.add(fieldLayoutItem)
-        fieldLayoutManager.updateFieldLayout(fieldLayout)
+// Create a hierarchical data structure
+var treeData = {
+  "name": "A",
+  "children": [
+    {
+      "name": "B",
+      "children": [
+        {
+          "name": "C"
+        },
+        {
+          "name": "D"
+        }
+      ]
+    },
+    {
+      "name": "E",
+      "children": [
+        {
+          "name": "F"
+        },
+        {
+          "name": "G"
+        }
+      ]
     }
+  ]
+};
 
-    // Add the custom field to the screen
-    def fieldScreenLayoutItem = fieldScreenManager.createFieldScreenLayoutItem().with({
-        setFieldId(customFieldId)
-        setFieldScreen(screen)
-    })
-    screen.addFieldScreenLayoutItem(fieldScreenLayoutItem)
+// Create a tree layout and set the size of the tree
+var treeLayout = d3.tree()
+    .size([360, 500])
+    .separation(function(a, b) { return (a.parent == b.parent ? 1 : 2) / a.depth; });
 
-    // Update the field screen scheme item
-    def fieldScreenSchemeItem = new FieldScreenSchemeItem(
-        schemeItem.getIssueTypeId(),
-        schemeItem.getFieldScreen(),
-        fieldScreenLayoutItem.getId() as Long
-    )
-    fieldScreenScheme.updateFieldScreenSchemeItem(fieldScreenSchemeItem)
-}
+// Create a root node and pass in the tree data
+var root = d3.hierarchy(treeData);
 
-// Print the result
-log.debug("Custom field with ID {} enabled in screens with IDs {}", customFieldId, screenIds)
+// Assigns the parent, children, height, and depth properties
+root.x0 = height / 2;
+root.y0 = 0;
+
+// Compute the layout and get the nodes and links
+var treeNodes = treeLayout(root).descendants();
+var treeLinks = treeNodes.slice(1);
+
+// Draw the links
+svg.selectAll(".link")
+    .data(treeLinks)
+    .enter().append("path")
+    .attr("class", "link")
+    .attr("d", function(d) {
+      return "M" + project(d.x, d.y)
+           + "C" + project(d.x, (d.y + d.parent.y) / 2)
+           + " " + project(d.parent.x, (d.y + d.parent.y) / 2)
+           + " " + project(d.parent.x, d.parent.y);
+    });
+
+// Draw the nodes
+var node = svg.selectAll(".node")
+    .data(treeNodes)
+    .enter().append("g")
+    .attr("class", "node")
+    .attr("transform", function(d) { return "translate(" + project(d.x, d.y) + ")"; });
+
+node.append("circle")
+    .attr("r", 10);
+
+node.append("text")
+    .attr("dy", ".31em")
+    .attr("x", function(d) { return d.x < 180 === !d.children ? 6 : -6; })
+    .style("text-anchor", function(d) { return d.x < 180 === !d.children ? "start" : "end"; })
+    .attr("transform", function(d) { return "rotate(" + (d.x < 180 ? d.x - 90 : d.x + 90) + ")"; })
+    .
