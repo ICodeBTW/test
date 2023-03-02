@@ -1,52 +1,116 @@
- // Set the dimensions and margins of the diagram
-var margin = {top: 20, right: 90, bottom: 30, left: 90},
-    width = 960 - margin.left - margin.right,
-    height = 500 - margin.top - margin.bottom;
+radialTree = { 
 
-// Append an SVG element to the body of the page
-var svg = d3.select("body").append("svg")
-    .attr("width", width + margin.right + margin.left)
-    .attr("height", height + margin.top + margin.bottom)
-  .append("g")
-    .attr("transform", "translate(" + (margin.left + width / 2) + "," + (margin.top + height / 2) + ")");
+  const svg = d3.select(DOM.svg(width, width))
+      .style("width", "100%")
+      .style("height", "auto")
+      .style("padding", "10px")
+      .style("box-sizing", "border-box")
+      .style("font", "12px sans-serif");
+  
+  const g = svg.append("g");
+    
+  const linkgroup = g.append("g")
+      .attr("fill", "none")
+      .attr("stroke", "#555")
+      .attr("stroke-opacity", 0.4)
+      .attr("stroke-width", 1.5);
 
-// Create a tree layout and set the size of the tree
-var treeLayout = d3.tree()
-    .size([360, 500])
-    .separation(function(a, b) { return (a.parent == b.parent ? 1 : 2) / a.depth; });
+  const nodegroup = g.append("g")
+      .attr("stroke-linejoin", "round")
+      .attr("stroke-width", 3);
 
-// Create a root node and pass in the tree data
-var root = d3.hierarchy(treeData);
+  function newdata (animate = true) {
+    let root = tree(data);
+    let links_data = root.links();
+    let links = linkgroup
+      .selectAll("path")
+      .data(links_data, d => d.source.data.name+"_"+d.target.data.name);
+    
+    links.exit().remove();
+    
+    let newlinks = links
+      .enter()
+      .append("path")
+      .attr("d", d3.linkRadial()
+        .angle(d => d.x)
+        .radius(0.1));
 
-// Assigns the parent, children, height, and depth properties
-root.x0 = height / 2;
-root.y0 = 0;
+    
+    let t = d3.transition()
+      .duration(animate ? 400 : 0)
+      .ease(d3.easeLinear)
+      .on("end", function() {
+          const box = g.node().getBBox();
+          svg.transition().duration(1000).attr("viewBox", `${box.x} ${box.y} ${box.width} ${box.height}`);
+      });
+    
+    let alllinks = linkgroup.selectAll("path")
+    alllinks
+        .transition(t)
+        .attr("d", d3.linkRadial()
+            .angle(d => d.x)
+            .radius(d => d.y));
 
-// Compute the layout and get the nodes and links
-var treeNodes = treeLayout(root).descendants();
-var treeLinks = treeNodes.slice(1);
+    let nodes_data = root.descendants().reverse();
+    let nodes = nodegroup
+      .selectAll("g")
+      .data(nodes_data, function (d) { 
+        if (d.parent) {
+          return d.parent.data.name+d.data.name;
+        }
+        return d.data.name});
+    
+    nodes.exit().remove();
 
-// Draw the links
-svg.selectAll(".link")
-    .data(treeLinks)
-    .enter().append("path")
-    .attr("class", "link")
-    .attr("d", d3.linkRadial()
-        .angle(function(d) { return d.x / 180 * Math.PI; })
-        .radius(function(d) { return d.y; }));
+    let newnodes = nodes
+      .enter().append("g");
+    
+    let allnodes = animate ? nodegroup.selectAll("g").transition(t) : nodegroup.selectAll("g");
+    allnodes
+      .attr("transform", d => `
+        rotate(${d.x * 180 / Math.PI - 90})
+        translate(${d.y},0)
+      `);
+    
+    newnodes.append("circle")
+        .attr("r", 4.5)
+        .on ("click", function (d) {
+      let altChildren = d.data.altChildren || [];
+      let children = d.data.children;
+      d.data.children = altChildren;
+      d.data.altChildren = children;
+      newdata (); 
+    });
+        
+    nodegroup.selectAll("g circle").attr("fill", function (d) {
+      let altChildren = d.data.altChildren || [];
+      let children = d.data.children;
+      return d.children || (children && (children.length > 0 || altChildren.length > 0)) ? "#555" : "#999" } );
 
-// Draw the nodes
-var node = svg.selectAll(".node")
-    .data(treeNodes)
-    .enter().append("g")
-    .attr("class", "node")
-    .attr("transform", function(d) { return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")"; });
+    newnodes.append("text")
+        .attr("dy", "0.31em")
+        .text(d => d.data.name)
+      .clone(true).lower()
+        .attr("stroke", "white");
+    
+    nodegroup.selectAll("g text")
+      .attr("x", d => d.x < Math.PI === !d.children ? 6 : -6)
+      .attr("text-anchor", d => d.x < Math.PI === !d.children ? "start" : "end")
+      .attr("transform", d => d.x >= Math.PI ? "rotate(180)" : null);
 
-node.append("circle")
-    .attr("r", 10);
+  }
+  
+  newdata (false); 
+  
+  document.body.appendChild(svg.node());
 
-node.append("text")
-    .attr("dy", ".31em")
-    .attr("x", function(d) { return d.x < 180 === !d.children ? 6 : -6; })
-    .style("text-anchor", function(d) { return d.x < 180 === !d.children ? "start" : "end"; })
-    .attr("transform", function(d) { return "rotate(" + (d.x < 180 ? d.x - 90 : d.x + 90) + ")"; });
+  const box = g.node().getBBox();
+  
+  //box.width = box.height = Math.max(box.width, box.height)*1.2;
+  svg.remove()
+      .attr("width", box.width)
+      .attr("height", box.height)
+      .attr("viewBox", `${box.x} ${box.y} ${box.width} ${box.height}`);
+
+  return svg.node();
+}
