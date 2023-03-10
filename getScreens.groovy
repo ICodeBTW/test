@@ -1,19 +1,24 @@
-// Replace 'CUSTOM_FIELD_NAME' with the name of your custom field
-CustomField customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectByName("CUSTOM_FIELD_NAME")
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.fields.CustomField
+import com.atlassian.jira.project.Project
 
-// Replace the list of project IDs with your own list
-List<String> projectIDs = ["PROJECT_ID_1", "PROJECT_ID_2", "PROJECT_ID_3"]
+// Replace "PROJECT_KEY" with the key of the project you want to get custom fields for
+def projectKey = "PROJECT_KEY"
 
-projectIDs.each { projectID ->
-    Project project = ComponentAccessor.getProjectManager().getProjectObjByKey(projectID)
-    if (project) {
-        if (!project.getCustomFieldObjects().contains(customField)) {
-            ComponentAccessor.getProjectManager().updateProject(project, project.getIssueTypes(), project.getAssigneeType(),
-                project.getProjectLead(), project.getUrl(), project.getDescription(), customField)
-        } else {
-            log.warn("Custom field {} already exists on project {}.", customField.name, project.key)
+// Get the project object
+Project project = ComponentAccessor.getProjectManager().getProjectObjByKey(projectKey)
+
+// Get the custom fields associated with the project
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+List<CustomField> allCustomFields = customFieldManager.getCustomFieldObjects()
+
+List<CustomField> projectCustomFields = allCustomFields.findAll { customField ->
+    customField.getConfigurationSchemes().any { scheme ->
+        scheme.getContexts().any { context ->
+            context.getProjectId() == project.id
         }
-    } else {
-        log.warn("Project with ID {} not found.", projectID)
     }
 }
+
+// Print out the custom fields associated with the project
+log.warn("Custom fields associated with project ${projectKey}: ${projectCustomFields*.name.join(', ')}")
