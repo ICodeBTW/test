@@ -1,24 +1,33 @@
 import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.fields.CustomFieldManager
+import com.atlassian.jira.issue.fields.FieldManager
+import com.atlassian.jira.project.ProjectManager
+import com.atlassian.jira.issue.CustomFieldManager
+import com.atlassian.jira.issue.IssueFieldConstants
 import com.atlassian.jira.issue.fields.CustomField
-import com.atlassian.jira.project.Project
+import com.atlassian.jira.issue.context.ProjectContext
+import com.atlassian.jira.issue.context.GlobalIssueContext
 
-// Replace "PROJECT_KEY" with the key of the project you want to get custom fields for
-def projectKey = "PROJECT_KEY"
-
-// Get the project object
-Project project = ComponentAccessor.getProjectManager().getProjectObjByKey(projectKey)
-
-// Get the custom fields associated with the project
 def customFieldManager = ComponentAccessor.getCustomFieldManager()
-List<CustomField> allCustomFields = customFieldManager.getCustomFieldObjects()
+def issueTypeSchemeManager = ComponentAccessor.getIssueTypeSchemeManager()
+def projectManager = ComponentAccessor.getProjectManager()
 
-List<CustomField> projectCustomFields = allCustomFields.findAll { customField ->
-    customField.getConfigurationSchemes().any { scheme ->
-        scheme.getContexts().any { context ->
-            context.getProjectId() == project.id
-        }
-    }
+// Change the following values to match your custom field and project
+def customFieldName = "My Custom Field"
+def projectKey = "PROJECTKEY"
+
+def customField = customFieldManager.createCustomField(
+    customFieldName,
+    "My Custom Field Description",
+    customFieldManager.getCustomFieldType(IssueFieldConstants.CUSTOM_FIELD_TYPE_TEXT),
+    customFieldManager.getDefaultSearcher(customFieldManager.getCustomFieldType(IssueFieldConstants.CUSTOM_FIELD_TYPE_TEXT)),
+    new ArrayList<>()
+)
+
+def project = projectManager.getProjectByCurrentKey(projectKey)
+def contexts = customFieldManager.getConfigurationSchemes().findAll { scheme ->
+    scheme.getAssociatedProjectIds().contains(project.getId())
 }
-
-// Print out the custom fields associated with the project
-log.warn("Custom fields associated with project ${projectKey}: ${projectCustomFields*.name.join(', ')}")
+contexts.each { contextScheme ->
+    customFieldManager.createFieldConfig(customField, contextScheme)
+}
