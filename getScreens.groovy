@@ -1,8 +1,10 @@
- if (configs.find { it.getProjectObject()?.id == project.id }) {
-        return
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def field = customFieldManager.getCustomFieldObjectByName("Custom Field Name")
+def configuration = field.getRelevantConfigurations()
+
+configuration.each { config ->
+    def project = config.getProjectObject()
+    if (project.key == "PROJECT_KEY") {
+        customFieldManager.removeCustomFieldFromProject(field.getIdAsLong(), project)
     }
-    def fieldConfig = configScheme.getOneAndOnlyConfig()
-    if (fieldConfig && !fieldManager.isFieldHidden(customField, project, fieldConfig)) {
-        return
-    }
-    configScheme.addConfiguration(project, fieldConfig)
+}
