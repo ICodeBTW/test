@@ -1,10 +1,1 @@
-def customFieldManager = ComponentAccessor.getCustomFieldManager()
-def field = customFieldManager.getCustomFieldObjectByName("Custom Field Name")
-def configuration = field.getRelevantConfigurations()
-
-configuration.each { config ->
-    def project = config.getProjectObject()
-    if (project.key == "PROJECT_KEY") {
-        customFieldManager.removeCustomFieldFromProject(field.getIdAsLong(), project)
-    }
-}
+I am writing to inform you that I need to take sick leave on 13th and 14th of March 2023 due to an illness that I am currently experiencing. I am sorry for any inconvenience this may cause and I assure you that I will make up for any missed work as soon as possible.
