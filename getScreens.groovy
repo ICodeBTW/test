@@ -1,33 +1,23 @@
 import com.atlassian.jira.component.ComponentAccessor
-import com.atlassian.jira.issue.fields.CustomFieldManager
-import com.atlassian.jira.issue.fields.config.FieldConfigScheme
-import com.atlassian.jira.issue.fields.config.manager.FieldConfigSchemeManager
-import com.atlassian.jira.issue.fields.layout.field.FieldLayoutManager
-import com.atlassian.jira.project.Project
 
 def customFieldManager = ComponentAccessor.getCustomFieldManager()
-def projectManager = ComponentAccessor.getProjectManager()
-def fieldConfigSchemeManager = ComponentAccessor.getComponent(FieldConfigSchemeManager)
-def fieldLayoutManager = ComponentAccessor.getComponent(FieldLayoutManager)
+def sourceField = customFieldManager.getCustomFieldObjectByName("Source Field")
+def targetField = customFieldManager.getCustomFieldObjectByName("Target Field")
 
-//Replace the custom field ID with your custom field's ID
-def customField = customFieldManager.getCustomFieldObject("customfield_10000")
+def issueService = ComponentAccessor.getIssueService()
 
-//Replace the project key with the key of the project to which you want to add the custom field
-def project = projectManager.getProjectByCurrentKey("PROJECT_KEY")
+def query = issueService.newQueryBuilder().where().project("PROJECT_KEY").build()
+def results = issueService.query(currentUser, query, PagerFilter.getUnlimitedFilter())
 
-//Get the project's field configuration scheme
-def fieldConfigScheme = fieldConfigSchemeManager.getConfigScheme(project)
-
-//Create a new field configuration for the custom field
-def fieldConfig = customFieldManager.createFieldConfig(customField)
-
-//Add the custom field to the project's field configuration scheme
-fieldConfigScheme.getOneAndOnlyConfig().get().addFieldConfig(customField)
-
-//Update the project's field layout to include the custom field
-def fieldLayout = fieldLayoutManager.getFieldLayout(project)
-fieldLayoutManager.addCustomFieldToFieldLayout(fieldConfig, fieldLayout)
-
-//Associate the updated field configuration scheme with the project
-fieldConfigSchemeManager.updateFieldConfigScheme(fieldConfigScheme)
+results.each { issue ->
+    def sourceFieldValue = issue.getCustomFieldValue(sourceField)
+    if (sourceFieldValue) {
+        issue.setCustomFieldValue(targetField, sourceFieldValue)
+        def updateValidationResult = issueService.validateUpdate(currentUser, issue.id, issue)
+        if (updateValidationResult.isValid()) {
+            issueService.update(currentUser, updateValidationResult)
+        } else {
+            log.warn("Could not update issue ${issue.key}: ${updateValidationResult.errorCollection}")
+        }
+    }
+}
