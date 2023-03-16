@@ -1,19 +1,14 @@
 import com.atlassian.jira.component.ComponentAccessor
-import com.atlassian.jira.issue.Issue
-import com.atlassian.jira.issue.search.SearchResults
-import com.atlassian.jira.issue.search.SearchProviderFactory
-import com.atlassian.jira.web.bean.PagerFilter
 
-def projectKey = "PROJECT_KEY" // replace with your project key
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def issueManager = ComponentAccessor.getIssueManager()
 
-def jqlSearchProvider = ComponentAccessor.getComponent(SearchProviderFactory).createSearchProvider(null)
-def searchQuery = jqlSearchProvider.getSearchQueryBuilder().project(projectKey).buildQuery()
+def sourceField = customFieldManager.getCustomFieldObjectByName("Source Field Name")
+def destinationField = customFieldManager.getCustomFieldObjectByName("Destination Field Name")
 
-def searchResults = jqlSearchProvider.search(searchQuery, ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser(), PagerFilter.getUnlimitedFilter()) as SearchResults
+def issues = issueManager.getIssueObjects(issueManager.getIssueIdsForProject(projectKey))
 
-def issues = searchResults.issues.collect { Issue issue -> issue }
-
-issues.each { Issue issue ->
-    log.debug("Issue: ${issue.key}")
-    // Do something with the issue
+issues.each {
+  def sourceValue = it.getCustomFieldValue(sourceField)
+  destinationField.updateValue(null, it, new ModifiedValue(it.getCustomFieldValue(destinationField), sourceValue),changeHolder,true)
 }
