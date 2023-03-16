@@ -1,25 +1,19 @@
 import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.Issue
+import com.atlassian.jira.issue.search.SearchResults
 import com.atlassian.jira.issue.search.SearchProviderFactory
+import com.atlassian.jira.web.bean.PagerFilter
 
-def customFieldManager = ComponentAccessor.getCustomFieldManager()
-def sourceField = customFieldManager.getCustomFieldObjectByName("Source Field")
-def targetField = customFieldManager.getCustomFieldObjectByName("Target Field")
+def projectKey = "PROJECT_KEY" // replace with your project key
 
-def issueService = ComponentAccessor.getIssueService()
 def jqlSearchProvider = ComponentAccessor.getComponent(SearchProviderFactory).createSearchProvider(null)
+def searchQuery = jqlSearchProvider.getSearchQueryBuilder().project(projectKey).buildQuery()
 
-def query = jqlSearchProvider.getSearchQueryBuilder().project("PROJECT_KEY").buildQuery()
-def results = jqlSearchProvider.search(query, currentUser, new PagerFilter())
+def searchResults = jqlSearchProvider.search(searchQuery, ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser(), PagerFilter.getUnlimitedFilter()) as SearchResults
 
-results.issues.each { issue ->
-    def sourceFieldValue = issue.getCustomFieldValue(sourceField)
-    if (sourceFieldValue) {
-        issue.setCustomFieldValue(targetField, sourceFieldValue)
-        def updateValidationResult = issueService.validateUpdate(currentUser, issue.id, issue)
-        if (updateValidationResult.isValid()) {
-            issueService.update(currentUser, updateValidationResult)
-        } else {
-            log.warn("Could not update issue ${issue.key}: ${updateValidationResult.errorCollection}")
-        }
-    }
+def issues = searchResults.issues.collect { Issue issue -> issue }
+
+issues.each { Issue issue ->
+    log.debug("Issue: ${issue.key}")
+    // Do something with the issue
 }
