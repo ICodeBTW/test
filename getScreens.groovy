@@ -1,14 +1,15 @@
-import com.atlassian.jira.component.ComponentAccessor
+import com.onresolve.scriptrunner.runner.ScriptRunnerImpl
 
-def customFieldManager = ComponentAccessor.getCustomFieldManager()
-def issueManager = ComponentAccessor.getIssueManager()
+def scriptRunner = ScriptRunnerImpl.getPlugin()
+def consoleAppender = scriptRunner.console.getAppender("Console")
 
-def sourceField = customFieldManager.getCustomFieldObjectByName("Source Field Name")
-def destinationField = customFieldManager.getCustomFieldObjectByName("Destination Field Name")
+// store the original value of MaxFileSize
+def originalMaxFileSize = consoleAppender.getMaxFileSize()
 
-def issues = issueManager.getIssueObjects(issueManager.getIssueIdsForProject(projectKey))
+// temporarily set MaxFileSize to a larger value
+consoleAppender.setMaxFileSize("10MB")
 
-issues.each {
-  def sourceValue = it.getCustomFieldValue(sourceField)
-  destinationField.updateValue(null, it, new ModifiedValue(it.getCustomFieldValue(destinationField), sourceValue),changeHolder,true)
-}
+// your script code here
+
+// reset MaxFileSize to its original value
+consoleAppender.setMaxFileSize(originalMaxFileSize)
