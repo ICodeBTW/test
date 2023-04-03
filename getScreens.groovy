@@ -1,23 +1,15 @@
 import com.atlassian.jira.component.ComponentAccessor
 import com.atlassian.jira.issue.fields.FieldManager
 import com.atlassian.jira.issue.fields.CustomField
+import com.atlassian.jira.config.IssueTypeScreenSchemeManager
 
 def fieldManager = ComponentAccessor.getFieldManager() as FieldManager
 def customField = fieldManager.getCustomFieldObjectByName("Name of Field to Disable")
-def configurationSchemeManager = ComponentAccessor.getConfigurationSchemeManager()
+def issueTypeScreenSchemeManager = ComponentAccessor.getComponent(IssueTypeScreenSchemeManager)
 
-configurationSchemeManager.getConfigurationSchemes().each { scheme ->
-    def config = configurationSchemeManager.getConfiguration(scheme, customField)
-    if (config) {
-        def fieldConfigScheme = configurationSchemeManager.getFieldConfigScheme(config)
-        def fieldConfig = fieldConfigScheme.getOneAndOnlyConfig()
-        fieldConfigScheme.removeConfiguration(fieldConfig)
-    }
-}
-
-customField.getConfigurationSchemes().each { scheme ->
-    def config = customField.getRelevantConfig(scheme)
-    if (config) {
-        customField.getConfigurationSchemes().removeSchemeAssociation(config.getSchemeId())
+issueTypeScreenSchemeManager.getIssueTypeScreenSchemes().each { issueTypeScreenScheme ->
+    issueTypeScreenScheme.getIssueTypeMappings().each { issueType, screenScheme ->
+        screenScheme.removeFieldScreenLayoutItem(customField.id)
+        issueTypeScreenSchemeManager.updateIssueTypeScreenSchemeMappings(issueTypeScreenScheme, issueType, screenScheme)
     }
 }
