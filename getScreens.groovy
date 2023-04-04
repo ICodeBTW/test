@@ -16,11 +16,12 @@ def fieldConfigSchemeManager = ComponentAccessor.getComponent(FieldConfigSchemeM
 def sourceField = customFieldManager.getCustomFieldObjectByName("Source Custom Field")
 def targetField = customFieldManager.getCustomFieldObjectByName("Target Custom Field")
 
+
 // Get the list of issue contexts for the source custom field
-def sourceContexts = sourceField.getConfigurationSchemes().collect { FieldConfigScheme fieldConfigScheme ->
-    fieldConfigScheme.getAllConfigs().collect { FieldConfig fieldConfig ->
-        fieldConfig.getContexts().collect { IssueContext issueContext ->
-            new IssueContextImpl(issueContext.getProjectObject(), issueContext.getIssueTypeObject())
+def sourceContexts = sourceField.configurationSchemes.collect { FieldConfigScheme fieldConfigScheme ->
+    fieldConfigScheme.configs.collect { FieldConfig fieldConfig ->
+        fieldConfig.contexts.collect { IssueContext issueContext ->
+            new IssueContextImpl(issueContext.projectObject, issueContext.issueTypeObject)
         }
     }.flatten()
 }.flatten().unique()
