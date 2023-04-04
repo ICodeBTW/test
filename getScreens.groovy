@@ -1,23 +1,34 @@
 import com.atlassian.jira.component.ComponentAccessor
-import com.atlassian.jira.issue.fields.FieldManager
 import com.atlassian.jira.issue.fields.CustomField
-import com.atlassian.jira.project.Project
-import com.atlassian.jira.project.ProjectManager
-import com.atlassian.jira.issue.fields.layout.field.FieldLayout
-import com.atlassian.jira.issue.fields.layout.field.FieldLayoutItem
-import com.atlassian.jira.issue.fields.layout.field.FieldLayoutManager
+import com.atlassian.jira.issue.context.GlobalIssueContext
+import com.atlassian.jira.issue.context.ProjectIssueContext
+import com.atlassian.jira.issue.context.IssueContext
+import com.atlassian.jira.issue.context.IssueContextImpl
+import com.atlassian.jira.issue.fields.config.FieldConfig
+import com.atlassian.jira.issue.fields.config.FieldConfigScheme
+import com.atlassian.jira.issue.fields.config.manager.FieldConfigSchemeManager
+import com.atlassian.jira.issue.fields.config.manager.FieldConfigSchemeManagerImpl
 
-def fieldManager = ComponentAccessor.getFieldManager() as FieldManager
-def customField = fieldManager.getCustomFieldObjectByName("Name of Field to Disable")
-def projectKey = "PROJECT_KEY" // Replace with the key of the project where the field should be disabled
-def projectManager = ComponentAccessor.getComponent(ProjectManager)
-def project = projectManager.getProjectObjByKey(projectKey)
-def fieldLayoutManager = ComponentAccessor.getFieldLayoutManager()
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def fieldConfigSchemeManager = ComponentAccessor.getComponent(FieldConfigSchemeManager)
 
-def fieldLayout = fieldLayoutManager.getFieldLayout(project)
-def fieldLayoutItem = fieldLayout.getFieldLayoutItem(customField)
+// Get the source and target custom fields
+def sourceField = customFieldManager.getCustomFieldObjectByName("Source Custom Field")
+def targetField = customFieldManager.getCustomFieldObjectByName("Target Custom Field")
 
-if (fieldLayoutItem) {
-    fieldLayout.removeFieldLayoutItem(fieldLayoutItem)
-    fieldLayoutManager.storeFieldLayout(fieldLayout)
+// Get the list of issue contexts for the source custom field
+def sourceContexts = sourceField.getConfigurationSchemes().collect { FieldConfigScheme fieldConfigScheme ->
+    fieldConfigScheme.getAllConfigs().collect { FieldConfig fieldConfig ->
+        fieldConfig.getContexts().collect { IssueContext issueContext ->
+            new IssueContextImpl(issueContext.getProjectObject(), issueContext.getIssueTypeObject())
+        }
+    }.flatten()
+}.flatten().unique()
+
+// Copy the issue contexts to the target custom field
+sourceContexts.each { IssueContext issueContext ->
+    def existingConfigs = fieldConfigSchemeManager.getConfigsForField(targetField, issueContext)
+    def newConfig = existingConfigs.isEmpty() ? targetField.getRelevantConfig(issueContext) : existingConfigs.first()
+    fieldConfigSchemeManager.removeConfigScheme(issueContext, targetField)
+    fieldConfigSchemeManager.addConfigToScheme(newConfig, issueContext, targetField)
 }
