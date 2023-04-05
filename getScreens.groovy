@@ -23,7 +23,7 @@ List<FieldConfigScheme> sourceFieldConfigSchemes = sourceCustomField.getConfigur
 sourceFieldConfigSchemes.each { sourceFieldConfigScheme ->
 
     // get the source custom field configuration for the current scheme
-    FieldConfig sourceFieldConfig = customFieldManager.getFieldConfig(sourceCustomField.getId(), sourceFieldConfigScheme.getId())
+    FieldConfig sourceFieldConfig = sourceCustomField.getFieldConfig(sourceFieldConfigScheme)
 
     // create a new configuration scheme for the target custom field, copying the name and description from the source scheme
     FieldConfigScheme targetFieldConfigScheme = new FieldConfigScheme.Builder().setName(sourceFieldConfigScheme.getName()).setDescription(sourceFieldConfigScheme.getDescription()).build()
