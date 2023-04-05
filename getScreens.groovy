@@ -1,35 +1,36 @@
 import com.atlassian.jira.component.ComponentAccessor
-import com.atlassian.jira.issue.fields.CustomField
-import com.atlassian.jira.issue.context.GlobalIssueContext
-import com.atlassian.jira.issue.context.ProjectIssueContext
-import com.atlassian.jira.issue.context.IssueContext
-import com.atlassian.jira.issue.context.IssueContextImpl
+import com.atlassian.jira.issue.CustomFieldManager
 import com.atlassian.jira.issue.fields.config.FieldConfig
 import com.atlassian.jira.issue.fields.config.FieldConfigScheme
-import com.atlassian.jira.issue.fields.config.manager.FieldConfigSchemeManager
-import com.atlassian.jira.issue.fields.config.manager.FieldConfigSchemeManagerImpl
 
-def customFieldManager = ComponentAccessor.getCustomFieldManager()
-def fieldConfigSchemeManager = ComponentAccessor.getComponent(FieldConfigSchemeManager)
+// set the name of the custom fields you want to copy the configuration from and to
+def sourceCustomFieldName = "Source Custom Field Name"
+def targetCustomFieldName = "Target Custom Field Name"
 
-// Get the source and target custom fields
-def sourceField = customFieldManager.getCustomFieldObjectByName("Source Custom Field")
-def targetField = customFieldManager.getCustomFieldObjectByName("Target Custom Field")
+// get the custom field manager
+CustomFieldManager customFieldManager = ComponentAccessor.getCustomFieldManager()
 
+// get the source custom field
+def sourceCustomField = customFieldManager.getCustomFieldObjectByName(sourceCustomFieldName)
 
-// Get the list of issue contexts for the source custom field
-def sourceContexts = sourceField.configurationSchemes.collect { FieldConfigScheme fieldConfigScheme ->
-    fieldConfigScheme.configs.collect { FieldConfig fieldConfig ->
-        fieldConfig.contexts.collect { IssueContext issueContext ->
-            new IssueContextImpl(issueContext.projectObject, issueContext.issueTypeObject)
-        }
-    }.flatten()
-}.flatten().unique()
+// get the target custom field
+def targetCustomField = customFieldManager.getCustomFieldObjectByName(targetCustomFieldName)
 
-// Copy the issue contexts to the target custom field
-sourceContexts.each { IssueContext issueContext ->
-    def existingConfigs = fieldConfigSchemeManager.getConfigsForField(targetField, issueContext)
-    def newConfig = existingConfigs.isEmpty() ? targetField.getRelevantConfig(issueContext) : existingConfigs.first()
-    fieldConfigSchemeManager.removeConfigScheme(issueContext, targetField)
-    fieldConfigSchemeManager.addConfigToScheme(newConfig, issueContext, targetField)
+// get the field configuration of the source custom field
+FieldConfig sourceFieldConfig = sourceCustomField.getRelevantConfig()
+
+// get the field configuration of the target custom field
+FieldConfig targetFieldConfig = targetCustomField.getRelevantConfig()
+
+// get the field configuration scheme of the target custom field
+FieldConfigScheme targetFieldConfigScheme = customFieldManager.getFieldConfigScheme(targetCustomField)
+
+// copy the configuration from the source custom field to the target custom field
+targetFieldConfigScheme.getIssueTypeIds().each { issueTypeId ->
+    targetFieldConfig.setOptions(sourceFieldConfig.getOptions(issueTypeId))
 }
+
+// update the target custom field's configuration
+customFieldManager.updateCustomField(targetCustomField)
+
+println "Configuration copied from $sourceCustomFieldName to $targetCustomFieldName."
