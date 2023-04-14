@@ -11,11 +11,16 @@ def targetCustomField = customFieldManager.getCustomFieldObjectByName(targetCust
 
 // Loop through each existing configuration scheme for the source custom field
 sourceCustomField.getConfigurationSchemes().each { oldFieldConfigScheme ->
-    def newFieldConfigScheme = new Builder(oldFieldConfigScheme).build()
+    def newFieldConfigScheme = new Builder(oldFieldConfigScheme).setName(oldFieldConfigScheme.getName() + " - copy").build()
     def fieldConfigSchemeManager = ComponentAccessor.getFieldConfigSchemeManager()
-    fieldConfigSchemeManager.createFieldConfigScheme(newFieldConfigScheme)
+    def newFieldConfigSchemeObject = fieldConfigSchemeManager.createFieldConfigScheme(targetCustomField.getId(), newFieldConfigScheme.getName())
+    newFieldConfigSchemeObject.setOneAndOnlyConfig(oldFieldConfigScheme.getOneAndOnlyConfig())
+    newFieldConfigSchemeObject.setAssociatedProjectIds(oldFieldConfigScheme.getAssociatedProjectIds())
+    newFieldConfigSchemeObject.setIssueTypeId(oldFieldConfigScheme.getIssueTypeId())
+    newFieldConfigSchemeObject.store()
     
     targetCustomField.updateConfigurations()
     def newFieldConfigSchemeId = targetCustomField.getConfigurationSchemes().find { it.getName() == newFieldConfigScheme.getName() }.getId()
     targetCustomField.getRelevantConfig(getFieldConfigSchemeId: { newFieldConfigSchemeId })
 }
+
