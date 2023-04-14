@@ -1,22 +1,21 @@
 import com.atlassian.jira.component.ComponentAccessor
-import com.atlassian.jira.issue.CustomFieldManager
+import com.atlassian.jira.issue.fields.CustomFieldManager
 import com.atlassian.jira.issue.fields.config.FieldConfigScheme
 import com.atlassian.jira.issue.fields.config.FieldConfigScheme.Builder
 
+def sourceCustomFieldName = "<name-of-source-custom-field>"
+def targetCustomFieldName = "<name-of-target-custom-field>"
 def customFieldManager = ComponentAccessor.getCustomFieldManager()
-def customField = customFieldManager.getCustomFieldObjectByName("<name-of-custom-field>")
-def customFieldConfigScheme = customField.getConfigurationSchemes().find { it.getName() == "<name-of-custom-field-config>" }
+def sourceCustomField = customFieldManager.getCustomFieldObjectByName(sourceCustomFieldName)
+def targetCustomField = customFieldManager.getCustomFieldObjectByName(targetCustomFieldName)
 
-if (customFieldConfigScheme) {
-    def newCustomFieldConfigScheme = new Builder(customFieldConfigScheme).build()
+// Loop through each existing configuration scheme for the source custom field
+sourceCustomField.getConfigurationSchemes().each { oldFieldConfigScheme ->
+    def newFieldConfigScheme = new Builder(oldFieldConfigScheme).build()
     def fieldConfigSchemeManager = ComponentAccessor.getFieldConfigSchemeManager()
-    fieldConfigSchemeManager.createFieldConfigScheme(newCustomFieldConfigScheme)
-    customFieldConfigScheme.getAssociatedIssueTypeObjects().each { issueTypeScheme ->
-        def newIssueTypeScheme = newCustomFieldConfigScheme.getAssociatedIssueTypeObject(issueTypeScheme.getIssueTypeId())
-        issueTypeScheme.getConfigs().each { fieldConfig ->
-            def newFieldConfig = newCustomFieldConfigScheme.getOneAndOnlyConfig().getConfigsByConfig(fieldConfig).first()
-            newIssueTypeScheme.addConfig(newFieldConfig, fieldConfig)
-        }
-    }
-    customField.updateFieldLayoutSchemes(customFieldConfigScheme, newCustomFieldConfigScheme)
+    fieldConfigSchemeManager.createFieldConfigScheme(newFieldConfigScheme)
+    
+    targetCustomField.updateConfigurations()
+    def newFieldConfigSchemeId = targetCustomField.getConfigurationSchemes().find { it.getName() == newFieldConfigScheme.getName() }.getId()
+    targetCustomField.getRelevantConfig(getFieldConfigSchemeId: { newFieldConfigSchemeId })
 }
