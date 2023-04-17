@@ -1,26 +1,20 @@
 import com.atlassian.jira.component.ComponentAccessor
 import com.atlassian.jira.issue.fields.CustomField
-import com.atlassian.jira.issue.fields.config.FieldConfigSchemeImpl
-
-// Get the custom fields by their IDs
-def customField1 = ComponentAccessor.getCustomFieldManager().getCustomFieldObject("customfield_10000")
-def customField2 = ComponentAccessor.getCustomFieldManager().getCustomFieldObject("customfield_10001")
-
-// Get the field configuration scheme for the first custom field
-def fieldConfigScheme1 = customField1.getConfigurationSchemes().find {
-    it.getName() == "Field Configuration Scheme Name"
+import com.atlassian.jira.issue.fields.config.FieldConfigScheme
+// Get the custom field object for the source field
+CustomField sourceField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectByName("Source Custom Field Name")
+// Get the field configuration scheme for the source field
+FieldConfigScheme sourceScheme = sourceField.getConfigurationSchemes().listIterator().next()
+// Get the custom field object for the destination field
+CustomField destField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectByName("Destination Custom Field Name")
+// Create a new field configuration scheme for the destination field
+FieldConfigScheme destScheme = ComponentAccessor.getFieldConfigSchemeManager().createFieldConfigScheme(destField)
+// Copy the issue type to field configuration mappings from the source scheme to the destination scheme
+for (Object obj : sourceScheme.getConfigsByIssueType().entrySet()) {
+    Map.Entry entry = (Map.Entry) obj
+    def issueType = entry.key
+    def fieldConfig = entry.value
+    destScheme.getIssueTypeMappings().add(issueType, fieldConfig)
 }
-
-// Create a new field configuration scheme for the second custom field
-def fieldConfigScheme2 = new FieldConfigSchemeImpl(ComponentAccessor.getFieldConfigSchemeManager(), customField2)
-
-fieldConfigScheme2.setName("New Field Configuration Scheme Name")
-fieldConfigScheme2.setDescription("Description of the new field configuration scheme")
-fieldConfigScheme2.store()
-
-// Copy the field configuration from the first scheme to the second scheme
-fieldConfigScheme2.copyFrom(fieldConfigScheme1)
-
-// Associate the new field configuration scheme with the second custom field
-customField2.setConfigurationScheme(fieldConfigScheme2)
-ComponentAccessor.getCustomFieldManager().updateCustomField(customField2)
+// Save the new field configuration scheme for the destination field
+ComponentAccessor.getFieldConfigSchemeManager().updateFieldConfigScheme(destScheme)
